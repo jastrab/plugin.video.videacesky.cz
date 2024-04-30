@@ -1,5 +1,6 @@
 Kodi plugin pre prehrávanie videí z videacesky.cz
 
+
 Info:
 
 ![Snímka obrazovky_2024-04-30_18-55-01](https://github.com/jastrab/plugin.video.videacesky.cz/assets/6190406/000cd2b9-4b2c-40f5-8e46-fbb0b982fe7e)
@@ -100,6 +101,6 @@ _Changelog:_
 - přidán Usage Tracking
 
 **1.0.0:**
-Initial version
+- Initial version
 
 
