@@ -20,6 +20,10 @@
 # *
 # */
 import os
+
+sys.path.append(os.path.join (os.path.dirname(__file__), 'resources', 'lib'))
+import videacesky
+
 import xbmc
 import xbmcaddon
 import xbmcgui
@@ -28,6 +32,7 @@ import util
 import xbmcprovider
 import xbmcutil
 import resolver
+
 from provider import ResolveException
 
 __scriptid__ = 'plugin.video.videacesky.cz'
@@ -36,15 +41,15 @@ __addon__ = xbmcaddon.Addon(id=__scriptid__)
 __language__ = __addon__.getLocalizedString
 __settings__ = __addon__.getSetting
 
-sys.path.append(os.path.join(__addon__.getAddonInfo('path'), 'resources', 'lib'))
-import videacesky
+# sys.path.append(os.path.join(__addon__.getAddonInfo('path'), 'resources', 'lib'))
+
 settings = {'downloads': __addon__.getSetting('downloads'), 'quality': __addon__.getSetting('quality')}
 
 
 def vp8_youtube_filter(stream):
 	# some embedded devices running xbmc doesnt have vp8 support, so we
 	# provide filtering ability for youtube videos
-	
+
 	#======================================================================
 	# 	  5: "240p h263 flv container",
 	#      18: "360p h264 mp4 container | 270 for rtmpe?",
@@ -87,10 +92,11 @@ class VideaceskyXBMCContentProvider(xbmcprovider.XBMCMultiResolverContentProvide
             playlist = xbmc.PlayList(xbmc.PLAYLIST_VIDEO)
             playlist.clear()
             for video in stream:
-                li = xbmcgui.ListItem(label=video['title'], path=video['url'], iconImage='DefaultVideo.png')
+                li = xbmcgui.ListItem(label=video['title'], path=video['url'])
+                li.setArt({'icon':'DefaultVideo.png'})
                 if video['subs'] != None and video['subs'] != '':
                     li.setSubtitles([video['subs']])
-                    
+
                 playlist.add(video['url'], li)
             stream = stream[0]
         if stream:
@@ -98,15 +104,16 @@ class VideaceskyXBMCContentProvider(xbmcprovider.XBMCMultiResolverContentProvide
             if 'headers' in stream.keys():
                 for header in stream['headers']:
                     stream['url'] += '|%s=%s' % (header, stream['headers'][header])
-            print 'Sending %s to player' % stream['url']
-            li = xbmcgui.ListItem(path=stream['url'], iconImage='DefaulVideo.png')
-            
+            print('Sending %s to player' % stream['url'])
+            li = xbmcgui.ListItem(path=stream['url'])
+            li.setArt({'icon':'DefaultVideo.png'})
+
             sub = False
             if xbmcaddon.Addon('xbmc.addon').getAddonInfo('version') > "16":
                 sub = True
                 if stream['subs'] != None and stream['subs'] != '':
                     li.setSubtitles([stream['subs']])
-                
+
             xbmcplugin.setResolvedUrl(int(sys.argv[1]), True, li)
             if sub == False:
                 xbmcutil.load_subtitles(stream['subs'])
@@ -115,7 +122,7 @@ class VideaceskyXBMCContentProvider(xbmcprovider.XBMCMultiResolverContentProvide
         def select_cb(resolved):
             stream_parts = []
             stream_parts_dict = {}
-            
+
             for stream in resolved:
                 if stream['surl'] not in stream_parts_dict:
                     stream_parts_dict[stream['surl']] = []
@@ -129,12 +136,12 @@ class VideaceskyXBMCContentProvider(xbmcprovider.XBMCMultiResolverContentProvide
                 quality = self.settings['quality'] or '0'
                 resolved = resolver.filter_by_quality(stream_parts_dict[stream_parts[0]], quality)
                 # if user requested something but 'ask me' or filtered result is exactly 1
-              	if len(resolved) == 1 or int(quality) > 0:
+                if len(resolved) == 1 or int(quality) > 0:
                     return resolved[0]
                 opts = ['%s [%s]' % (r['title'], r['quality']) for r in resolved]
                 ret = dialog.select(xbmcutil.__lang__(30005), opts)
                 return resolved[ret]
-           
+
             dialog = xbmcgui.Dialog()
             opts = [__language__(30059)]
             # when there are multiple stream, we let user choose only from best qualities
@@ -150,11 +157,20 @@ class VideaceskyXBMCContentProvider(xbmcprovider.XBMCMultiResolverContentProvide
         item.update({'url':url})
         try:
             return self.provider.resolve(item, select_cb=select_cb)
-        except ResolveException, e:
+        except ResolveException as e:
             self._handle_exc(e)
 
 params = util.params()
 if params == {}:
 	xbmcutil.init_usage_reporting(__scriptid__)
-VideaceskyXBMCContentProvider(videacesky.VideaceskyContentProvider(tmp_dir=xbmc.translatePath(__addon__.getAddonInfo('profile'))), settings, __addon__).run(params)
+# VideaceskyXBMCContentProvider(videacesky.VideaceskyContentProvider(tmp_dir=xbmc.translatePath(__addon__.getAddonInfo('profile'))), settings, __addon__).run(params)
+original_yt = __settings__('original_yt') == 'true'
+# vc = videacesky.VideaceskyContentProvider(original_yt=original_yt, tmp_dir=xbmc.translatePath(__addon__.getAddonInfo('profile')))
 
+try:
+    import xbmcvfs
+    vc = videacesky.VideaceskyContentProvider(original_yt=original_yt, tmp_dir=xbmcvfs.translatePath(__addon__.getAddonInfo('profile')))
+except:
+    vc = videacesky.VideaceskyContentProvider(original_yt=original_yt, tmp_dir=xbmc.translatePath(__addon__.getAddonInfo('profile')))
+
+VideaceskyXBMCContentProvider(vc, settings, __addon__).run(params)
